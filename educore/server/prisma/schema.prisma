@@ -5,14 +5,14 @@ datasource db {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 model User {
   id       String @id @default(cuid())
   email    String @unique
   password String
-  role     String // e.g., "ADMIN", "TEACHER"
+  role     String
 }
 
 model Student {
