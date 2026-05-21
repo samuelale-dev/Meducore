@@ -1,0 +1,37 @@
+name: EduCore CI Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  verify-application:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Codebase
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-node-version: 20
+        cache: 'npm'
+
+    - name: Install Root Dependencies
+      run: npm install
+
+    - name: Install & Verify Server Layer
+      run: |
+        cd server
+        npm install
+        npx prisma generate
+        npm run build
+
+    - name: Install & Verify Client Layer
+      run: |
+        cd client
+        npm install
+        npm run build
