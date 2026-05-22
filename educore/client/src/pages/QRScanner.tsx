@@ -10,8 +10,8 @@ export default function QRScanner() {
   useEffect(() => {
     const scanner = new Html5QrcodeScanner(
       'qr-reader-element-target',
-      { 
-        fps: 10, 
+      {
+        fps: 10,
         qrbox: { width: 250, height: 250 },
         rememberLastUsedCamera: true,
         supportedScanTypes: [0]
@@ -37,7 +37,7 @@ export default function QRScanner() {
 
     return () => {
       if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.clear().catch((err) => 
+        scannerInstanceRef.current.clear().catch((err) =>
           console.error("Scanner clear error:", err)
         );
       }
@@ -48,8 +48,8 @@ export default function QRScanner() {
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       <header className="p-4 bg-slate-800 flex justify-between items-center border-b border-slate-700">
         <h2 className="text-md font-bold">EduCore Scanner</h2>
-        <button 
-          onClick={() => navigate('/dashboard')} 
+        <button
+          onClick={() => navigate('/dashboard')}
           className="bg-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-600 transition-all"
         >
           Return to Hub
@@ -61,7 +61,7 @@ export default function QRScanner() {
           <div id="qr-reader-element-target" className="w-full bg-slate-900 rounded-xl overflow-hidden"></div>
         </div>
 
-        {scanResult && (
+        {scanResult ? (
           <div className="bg-blue-600 p-6 rounded-2xl shadow-lg border border-blue-500">
             <h3 className="text-lg font-bold mb-2 text-white">Scan Result</h3>
             {scanResult.app === 'EduCore' ? (
@@ -72,32 +72,19 @@ export default function QRScanner() {
             ) : (
               <p className="text-sm text-blue-100">{JSON.stringify(scanResult)}</p>
             )}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}                <p className="text-xs opacity-75 font-mono"><strong className="text-white">Record UID:</strong> {scanResult.id}</p>
-              </div>
-            ) : (
-              <p className="text-sm break-all font-mono bg-blue-700 p-3 rounded-lg text-white">
-                {JSON.stringify(scanResult)}
-              </p>
-            )}
-            <button 
-              onClick={() => setScanResult(null)} 
+            <button
+              onClick={() => setScanResult(null)}
               className="mt-4 w-full bg-white text-blue-600 font-semibold py-2 rounded-lg hover:bg-blue-50 transition-all"
             >
-              Clear & Scan Next Badge
+              Scan Next
             </button>
           </div>
         ) : (
           <div className="text-center text-slate-400 p-4 border border-slate-800 rounded-xl">
-            <p className="text-sm">Align student code inside matrix framing boundaries.</p>
-            <p className="text-xs mt-1 opacity-75">Processes instantly locally on your device.</p>
+            <p className="text-sm">Align student QR code in the frame.</p>
           </div>
         )}
       </main>
     </div>
   );
-}
+  }
