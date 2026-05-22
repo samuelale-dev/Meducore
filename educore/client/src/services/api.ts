@@ -1,4 +1,4 @@
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const api = {
   async post(endpoint: string, data: unknown) {
@@ -25,3 +25,18 @@ export const api = {
     return res.json();
   }
 };
+
+
+FILE 5: educore/client/src/main.tsx
+Replace entire content with:
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
