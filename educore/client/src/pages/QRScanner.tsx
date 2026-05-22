@@ -18,28 +18,21 @@ export default function QRScanner() {
       },
       false
     );
-
     scannerInstanceRef.current = scanner;
-
     scanner.render(
       (decodedText) => {
         try {
-          const parsedPayload = JSON.parse(decodedText);
-          setScanResult(parsedPayload);
+          const parsed = JSON.parse(decodedText);
+          setScanResult(parsed);
         } catch (_e) {
           setScanResult({ rawText: decodedText });
         }
       },
-      (_error) => {
-        // suppress errors
-      }
+      (_error) => {}
     );
-
     return () => {
       if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.clear().catch((err) =>
-          console.error("Scanner clear error:", err)
-        );
+        scannerInstanceRef.current.clear().catch(console.error);
       }
     };
   }, []);
@@ -50,25 +43,31 @@ export default function QRScanner() {
         <h2 className="text-md font-bold">EduCore Scanner</h2>
         <button
           onClick={() => navigate('/dashboard')}
-          className="bg-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-600 transition-all"
+          className="bg-slate-700 px-4 py-2 rounded-lg text-sm"
         >
-          Return to Hub
+          Back
         </button>
       </header>
-
-      <main className="flex-1 max-w-md w-full mx-auto px-4 py-8 flex flex-col justify-center space-y-6">
-        <div className="bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-          <div id="qr-reader-element-target" className="w-full bg-slate-900 rounded-xl overflow-hidden"></div>
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-8">
+        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+          <div id="qr-reader-element-target" className="w-full"></div>
         </div>
-
-        {scanResult ? (
-          <div className="bg-blue-600 p-6 rounded-2xl shadow-lg border border-blue-500">
-            <h3 className="text-lg font-bold mb-2 text-white">Scan Result</h3>
-            {scanResult.app === 'EduCore' ? (
-              <div className="space-y-1 text-sm text-blue-100">
-                <p><strong className="text-white">Name:</strong> {scanResult.name}</p>
-                <p><strong className="text-white">Student ID:</strong> {scanResult.studentId}</p>
-              </div>
+        {scanResult && (
+          <div className="mt-4 bg-blue-600 p-4 rounded-2xl">
+            <h3 className="font-bold mb-2">Result</h3>
+            <p className="text-sm">{JSON.stringify(scanResult)}</p>
+            <button
+              onClick={() => setScanResult(null)}
+              className="mt-3 w-full bg-white text-blue-600 font-semibold py-2 rounded-lg"
+            >
+              Scan Next
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
             ) : (
               <p className="text-sm text-blue-100">{JSON.stringify(scanResult)}</p>
             )}
