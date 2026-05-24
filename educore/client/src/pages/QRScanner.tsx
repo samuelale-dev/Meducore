@@ -19,6 +19,7 @@ export default function QRScanner() {
       false
     );
     scannerInstanceRef.current = scanner;
+    
     scanner.render(
       (decodedText) => {
         try {
@@ -30,9 +31,52 @@ export default function QRScanner() {
       },
       (_error) => {}
     );
+    
     return () => {
       if (scannerInstanceRef.current) {
         scannerInstanceRef.current.clear().catch(console.error);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
+      <header className="p-4 bg-slate-800 flex justify-between items-center border-b border-slate-700">
+        <h2 className="text-md font-bold">EduCore Scanner</h2>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="bg-slate-700 px-4 py-2 rounded-lg text-sm"
+        >
+          Back
+        </button>
+      </header>
+      
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-8">
+        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+          <div id="qr-reader-element-target" className="w-full"></div>
+        </div>
+        
+        {/* Fixed conditional rendering block using a proper ternary operator */}
+        {scanResult ? (
+          <div className="mt-4 bg-blue-600 p-4 rounded-2xl">
+            <h3 className="font-bold mb-2">Result</h3>
+            <p className="text-sm text-blue-100 break-all">{JSON.stringify(scanResult)}</p>
+            <button
+              onClick={() => setScanResult(null)}
+              className="mt-4 w-full bg-white text-blue-600 font-semibold py-2 rounded-lg hover:bg-blue-50 transition-all"
+            >
+              Scan Next
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 text-center text-slate-400 p-4 border border-slate-800 rounded-xl">
+            <p className="text-sm">Align student QR code in the frame.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
       }
     };
   }, []);
