@@ -1,5 +1,4 @@
 import { useState } from 'react';
-
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -45,13 +44,11 @@ export default function Login() {
             Sign in to access school administration hub
           </p>
         </div>
-
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
             {error}
           </div>
         )}
-
         <button
           onClick={handleGoogleLogin}
           className="w-full flex items-center justify-center gap-3 rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white font-medium hover:bg-slate-600 transition-all"
@@ -64,12 +61,46 @@ export default function Login() {
           </svg>
           Continue with Google
         </button>
-
         <div className="flex items-center gap-3">
           <div className="flex-1 border-t border-slate-600"></div>
           <span className="text-slate-400 text-sm">or</span>
           <div className="flex-1 border-t border-slate-600"></div>
         </div>
+        <form onSubmit={handleEmailLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
+            <input
+              type="email"
+              required
+              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="admin@educore.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+            <input
+              type="password"
+              required
+              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}        </div>
 
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
