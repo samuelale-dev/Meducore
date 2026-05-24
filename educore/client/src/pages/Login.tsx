@@ -19,17 +19,21 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
-    } finally {
+    } final {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     setError('');
+    setLoading(true); // Added loading state for consistency
     try {
       await signInWithGoogle();
+      navigate('/dashboard'); // Fixed: Added missing redirect
     } catch (err: any) {
       setError(err.message);
+    } final {
+      setLoading(false);
     }
   };
 
@@ -44,14 +48,17 @@ export default function Login() {
             Sign in to access school administration hub
           </p>
         </div>
+        
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
             {error}
           </div>
         )}
+        
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white font-medium hover:bg-slate-600 transition-all"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white font-medium hover:bg-slate-600 transition-all disabled:opacity-50"
         >
           <svg width="20" height="20" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -59,16 +66,50 @@ export default function Login() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Continue with Google
+          {loading ? 'Connecting...' : 'Continue with Google'}
         </button>
+        
         <div className="flex items-center gap-3">
           <div className="flex-1 border-t border-slate-600"></div>
           <span className="text-slate-400 text-sm">or</span>
           <div className="flex-1 border-t border-slate-600"></div>
         </div>
+        
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
+            <input
+              type="email"
+              required
+              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="admin@educore.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+            <input
+              type="password"
+              required
+              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
             <input
               type="email"
               required
