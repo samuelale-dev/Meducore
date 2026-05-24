@@ -29,7 +29,6 @@ export default function Login() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -48,13 +47,11 @@ export default function Login() {
             Sign in to access school administration hub
           </p>
         </div>
-        
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
             {error}
           </div>
         )}
-        
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -68,13 +65,11 @@ export default function Login() {
           </svg>
           {loading ? 'Connecting...' : 'Continue with Google'}
         </button>
-        
         <div className="flex items-center gap-3">
           <div className="flex-1 border-t border-slate-600"></div>
           <span className="text-slate-400 text-sm">or</span>
           <div className="flex-1 border-t border-slate-600"></div>
         </div>
-        
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
@@ -109,5 +104,4 @@ export default function Login() {
       </div>
     </div>
   );
-        }
-            
+}
