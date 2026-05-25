@@ -1,42 +1,74 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// ============================================================
+// EduCore: API Service Layer
+// File: educore/client/src/services/api.ts
+// All requests go to /api/* — no Railway URL needed
+// ============================================================
 
-export const api = {
-  async post(endpoint: string, data: unknown) {
-    const token = localStorage.getItem('educore_token');
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  },
-  async get(endpoint: string) {
-    const token = localStorage.getItem('educore_token');
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+async function apiFetch<T>(
+  path: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Request failed: ${res.status}`);
   }
+
+  return res.json();
+}
+
+// ── Students ──────────────────────────────────────────────
+
+export const studentsApi = {
+  list: (token: string) =>
+    apiFetch('/api/students', token),
+
+  create: (token: string, fullName: string) =>
+    apiFetch('/api/students', token, {
+      method: 'POST',
+      body: JSON.stringify({ fullName }),
+    }),
+
+  getQR: (token: string, studentId: number) =>
+    apiFetch(`/api/students/${studentId}/qr`, token),
 };
 
+// ── Tenant / Users ────────────────────────────────────────
 
-FILE 5: educore/client/src/main.tsx
-Replace entire content with:
+export const tenantApi = {
+  me: (token: string) =>
+    apiFetch('/api/tenant/me', token),
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
+  listUsers: (token: string) =>
+    apiFetch('/api/tenant/users', token),
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+  createUser: (
+    token: string,
+    data: { email: string; fullName: string; role: string }
+  ) =>
+    apiFetch('/api/tenant/users', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateUserRole: (token: string, userId: string, role: string) =>
+    apiFetch(`/api/tenant/users/${userId}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+
+  linkAccount: (token: string, email: string) =>
+    apiFetch('/api/tenant/auth/link', token, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+};
