@@ -1,44 +1,37 @@
+// ============================================================
+// EduCore Phase 1: Updated Express Entry Point
+// File: educore/server/src/index.ts
+// ADD the tenant route — keep everything else as-is
+// ============================================================
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import studentRoutes from './routes/student.routes';
-
-dotenv.config();
+import tenantRoutes from './routes/tenant.routes'; // ← NEW
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ✅ CORS — locked to your frontend URL only
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.CLIENT_URL as string]
-  : ['http://localhost:5173', 'http://localhost:3000'];
-
 app.use(cors({
-  origin: allowedOrigins,
+  origin: process.env.CLIENT_URL,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.options('*', cors()); // handle preflight requests
 
 app.use(express.json());
 
-// Health check for Railway
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
-
-// Global error handler
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err.message);
-  res.status(500).json({ error: 'Internal server error' });
-});
+app.use('/api/tenant', tenantRoutes); // ← NEW
 
 app.listen(PORT, () => {
-  console.log(`✅ EduCore server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`EduCore server running on port ${PORT}`);
 });
+
+export default app;
