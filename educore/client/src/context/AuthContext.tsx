@@ -1,7 +1,6 @@
 // ============================================================
-// EduCore: Updated AuthContext (no more VITE_API_URL)
+// EduCore: Updated AuthContext
 // File: educore/client/src/context/AuthContext.tsx
-// All API calls now go to /api/* on the same Vercel domain
 // ============================================================
 
 import {
@@ -40,6 +39,8 @@ interface AuthContextValue {
   appUser: AppUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -48,17 +49,18 @@ const AuthContext = createContext<AuthContextValue>({
   appUser: null,
   loading: true,
   signOut: async () => {},
+  signInWithGoogle: async () => {},
+  signInWithEmail: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession]       = useState<Session | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
-  const [appUser, setAppUser] = useState<AppUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [appUser, setAppUser]       = useState<AppUser | null>(null);
+  const [loading, setLoading]       = useState(true);
 
   async function fetchAppUser(accessToken: string, email?: string): Promise<void> {
     try {
-      // Try fetching profile — all calls go to /api/* (same domain, no env var needed)
       const res = await fetch('/api/tenant/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -73,7 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({ email }),
         });
-
         if (linkRes.ok) {
           const retryRes = await fetch('/api/tenant/me', {
             headers: { Authorization: `Bearer ${accessToken}` },
@@ -126,8 +127,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAppUser(null);
   }
 
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+    if (error) throw error;
+  }
+
+  async function signInWithEmail(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
   return (
-    <AuthContext.Provider value={{ session, supabaseUser, appUser, loading, signOut }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        supabaseUser,
+        appUser,
+        loading,
+        signOut,
+        signInWithGoogle,
+        signInWithEmail,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -141,4 +167,4 @@ export function useHasRole(...roles: UserRole[]): boolean {
   const { appUser } = useAuth();
   if (!appUser) return false;
   return roles.includes(appUser.role);
-                        }
+  }
