@@ -1,0 +1,135 @@
+// ============================================================
+// EduCore Phase 1: Updated Prisma Schema
+// File: educore/server/prisma/schema.prisma
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // needed for Supabase connection pooling
+}
+
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  HOMEROOM_TEACHER
+  STUDENT
+  LIBRARY_ASSISTANT
+  MEAL_RECORDER
+}
+
+
+// ─────────────────────────────────────────────
+// TENANT
+// ─────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(255)
+  subdomain String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  users           User[]
+  students        Student[]
+  teachingPeriods TeachingPeriod[]
+  mealRecords     MealRecord[]
+
+  @@map("tenants")
+}
+
+
+// ─────────────────────────────────────────────
+// USER (app-level, linked to Supabase Auth)
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  authId    String?  @unique @map("auth_id") @db.Uuid  // Supabase auth.users.id
+  email     String   @db.VarChar(255)
+  fullName  String   @map("full_name") @db.VarChar(255)
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // teaching period relations
+  periodsTeaching  TeachingPeriod[] @relation("TeacherPeriods")
+  periodsAssigned  TeachingPeriod[] @relation("AssignedByPeriods")
+
+  // meal record relations
+  mealsRecorded    MealRecord[] @relation("RecorderMeals")
+  mealsReceived    MealRecord[] @relation("StudentMeals")
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+
+// ─────────────────────────────────────────────
+// STUDENT (existing table, now with tenantId)
+// ─────────────────────────────────────────────
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  studentId Int      @unique @map("student_id")
+  fullName  String   @map("full_name") @db.VarChar(255)
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@map("students")
+}
+
+
+// ─────────────────────────────────────────────
+// TEACHING PERIODS
+// ─────────────────────────────────────────────
+
+model TeachingPeriod {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  teacherId   String   @map("teacher_id") @db.Uuid
+  subjectName String   @map("subject_name") @db.VarChar(100)
+  startTime   String   @map("start_time")  // stored as HH:MM string
+  endTime     String   @map("end_time")
+  dayOfWeek   Int      @map("day_of_week") // 1=Sun, 7=Sat
+  assignedBy  String   @map("assigned_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher  User   @relation("TeacherPeriods", fields: [teacherId], references: [id], onDelete: Restrict)
+  assigner User   @relation("AssignedByPeriods", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@map("teaching_periods")
+}
+
+
+// ─────────────────────────────────────────────
+// MEAL RECORDS
+// ─────────────────────────────────────────────
+
+model MealRecord {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  recorderId String   @map("recorder_id") @db.Uuid
+  mealType   String   @default("LUNCH") @map("meal_type") @db.VarChar(50)
+  servedAt   DateTime @default(now()) @map("served_at") @db.Timestamptz
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student  User   @relation("StudentMeals", fields: [studentId], references: [id], onDelete: Cascade)
+  recorder User   @relation("RecorderMeals", fields: [recorderId], references: [id], onDelete: Restrict)
+
+  @@map("meal_records")
+}
