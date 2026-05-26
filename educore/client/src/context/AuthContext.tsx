@@ -1,8 +1,3 @@
-// ============================================================
-// EduCore: Updated AuthContext
-// File: educore/client/src/context/AuthContext.tsx
-// ============================================================
-
 import {
   createContext,
   useContext,
@@ -26,11 +21,7 @@ export interface AppUser {
   email: string;
   fullName: string;
   role: UserRole;
-  tenant: {
-    id: string;
-    name: string;
-    subdomain: string;
-  };
+  tenant: { id: string; name: string; subdomain: string; };
 }
 
 interface AuthContextValue {
@@ -54,10 +45,10 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession]       = useState<Session | null>(null);
+  const [session, setSession]           = useState<Session | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
-  const [appUser, setAppUser]       = useState<AppUser | null>(null);
-  const [loading, setLoading]       = useState(true);
+  const [appUser, setAppUser]           = useState<AppUser | null>(null);
+  const [loading, setLoading]           = useState(true);
 
   async function fetchAppUser(accessToken: string, email?: string): Promise<void> {
     try {
@@ -66,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (res.status === 403 && email) {
-        // Not provisioned yet — try auto-linking
         const linkRes = await fetch('/api/tenant/auth/link', {
           method: 'POST',
           headers: {
@@ -86,11 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (res.ok) setAppUser(await res.json());
     } catch (err) {
-      console.error('[AuthContext] Failed to fetch app user:', err);
+      console.error('[AuthContext] fetchAppUser error:', err);
     }
   }
 
   useEffect(() => {
+    // Handle OAuth callback — Supabase puts tokens in the URL hash
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setSupabaseUser(session?.user ?? null);
@@ -104,14 +95,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setSupabaseUser(session?.user ?? null);
+
         if (session?.access_token) {
           setLoading(true);
-          fetchAppUser(session.access_token, session.user?.email).finally(() =>
-            setLoading(false)
-          );
+          fetchAppUser(session.access_token, session.user?.email).finally(() => {
+            setLoading(false);
+            // After SIGNED_IN from OAuth redirect, push to dashboard
+            if (event === 'SIGNED_IN' && window.location.pathname === '/login') {
+              window.location.href = '/dashboard';
+            }
+          });
         } else {
           setAppUser(null);
           setLoading(false);
@@ -125,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut();
     setAppUser(null);
+    window.location.href = '/login';
   }
 
   async function signInWithGoogle() {
@@ -140,20 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithEmail(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    // Email login — navigate after success
+    window.location.href = '/dashboard';
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        supabaseUser,
-        appUser,
-        loading,
-        signOut,
-        signInWithGoogle,
-        signInWithEmail,
-      }}
-    >
+    <AuthContext.Provider value={{
+      session, supabaseUser, appUser, loading,
+      signOut, signInWithGoogle, signInWithEmail,
+    }}>
       {children}
     </AuthContext.Provider>
   );
