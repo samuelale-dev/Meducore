@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        // Don't let the service worker try to bundle these — they run in the browser only
-        excludeChunks: ['dexie', 'html5-qrcode'],
+        // Exclude from service worker precache — these run in browser context only
+        exclude: [/dexie/, /html5-qrcode/],
       },
       manifest: {
         name: 'EduCore',
