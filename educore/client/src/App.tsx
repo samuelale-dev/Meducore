@@ -39,12 +39,16 @@ function OfflineSyncManager() {
 
 // Redirect unauthenticated users to login
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
-  if (loading) return null;
+  const { session, appUser, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen bg-indigo-950 flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
   if (!session) return <Navigate to="/login" replace />;
+  if (!appUser) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
-
 export default function App() {
   return (
     <AuthProvider>
