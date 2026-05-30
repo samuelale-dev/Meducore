@@ -9,20 +9,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Show current structure
+      - name: Fix imports to use _lib
         run: |
-          echo "=== api folder ==="
-          find educore/client/api -type f | sort
-      - name: Create _lib as copy of lib
-        run: |
-          cp -r educore/client/api/lib educore/client/api/_lib
-          echo "=== after copy ==="
-          find educore/client/api -type f | sort
-      - name: Commit
-        run: |
+          find educore/client/api -name "*.ts" ! -path "*/_lib/*" -exec sed -i "s|from '../lib/|from '../_lib/|g" {} \;
+          find educore/client/api -name "*.ts" ! -path "*/_lib/*" -exec sed -i "s|from '../../lib/|from '../../_lib/|g" {} \;
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add .
-          git commit -m "Add _lib folder alongside lib"
+          git commit -m "Fix imports to use _lib"
           git push
-          
