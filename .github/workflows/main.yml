@@ -1,7 +1,7 @@
-name: Rename API folder
+name: Fix lib folder
 on: workflow_dispatch
 jobs:
-  rename:
+  fix:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -9,12 +9,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Rename API to api
+      - name: Rename lib to _lib
         run: |
-          cp -r educore/client/API educore/client/api
-          git rm -rf educore/client/API
+          mv educore/client/api/lib educore/client/api/_lib
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add .
-          git commit -m "Rename API to api (lowercase)"
+          git commit -m "Rename lib to _lib"
           git push
