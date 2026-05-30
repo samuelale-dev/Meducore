@@ -4,8 +4,8 @@
 // ============================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext, handleCors, hasRole } from '../lib/auth';
-import { prisma } from '../lib/prisma';
+import { getAuthContext, handleCors, hasRole } from '../_lib/auth';
+import { prisma } from '../_lib/prisma';
 import QRCode from 'qrcode';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
