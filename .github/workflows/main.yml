@@ -9,11 +9,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Rename lib to _lib
+      - name: Fix _lib imports
         run: |
-          mv educore/client/api/lib educore/client/api/_lib
+          find educore/client/api -name "*.ts" -exec sed -i 's|from '\''../_lib/|from '\''../lib/|g' {} \;
+          find educore/client/api -name "*.ts" -exec sed -i 's|from '\''../../_lib/|from '\''../../lib/|g' {} \;
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add .
-          git commit -m "Rename lib to _lib"
+          git commit -m "Fix _lib imports to lib"
           git push
