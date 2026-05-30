@@ -30,14 +30,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const { role, verificationId, email } = req.body as {
+  // Extract the verified email securely from the Supabase token, NOT the request body
+  const verifiedEmail = supabaseUser.email;
+  if (!verifiedEmail) {
+    return res.status(400).json({ error: 'Supabase token does not contain a verified email address' });
+  }
+
+  const { role, verificationId } = req.body as {
     role: UserRole;
     verificationId: string;
-    email: string;
   };
 
-  if (!role || !verificationId || !email) {
-    return res.status(400).json({ error: 'role, verificationId, and email are required' });
+  if (!role || !verificationId) {
+    return res.status(400).json({ error: 'role and verificationId are required' });
   }
 
   // Find matching unlinked user record
@@ -92,16 +97,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Check the Google email matches the provisioned email (security check)
-  if (userRecord.email.toLowerCase() !== email.toLowerCase()) {
+  // Check the verified Google email against the provisioned email (security check)
+  if (userRecord.email && userRecord.email.toLowerCase() !== verifiedEmail.toLowerCase()) {
     // Allow linking even if emails differ — admin may have used a different email
-    // Just link the authId
+    // Log a warning for auditing purposes
+    console.warn(`[Onboarding] Email mismatch for User ID ${userRecord.id}: Provisioned with ${userRecord.email}, but linked using ${verifiedEmail}`);
   }
 
-  // Link the Google account to this user record
+  // Link the Google account to this user record securely
   const linked = await prisma.user.update({
     where: { id: userRecord.id },
-    data: { authId: supabaseUser.id, email },
+    data: { 
+      authId: supabaseUser.id, 
+      email: verifiedEmail.toLowerCase().trim() // Always use the identity provider's email
+    },
     select: { id: true, email: true, fullName: true, role: true, tenantId: true },
   });
 
@@ -109,4 +118,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     message: 'Account verified and linked successfully',
     user: linked,
   });
-}
+                     }
