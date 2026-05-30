@@ -2,13 +2,12 @@
   "name": "educore-client",
   "version": "1.0.0",
   "private": true,
-    "scripts": {
+     "scripts": {
     "dev": "vite",
-    "build": "prisma generate && tsc && vite build",
+    "build": "prisma generate && prisma db push --accept-data-loss && tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push"
-  },
+    "typecheck": "tsc --noEmit"
+     },
   "dependencies": {
     "@prisma/client": "^5.14.0",
     "@supabase/supabase-js": "^2.43.4",
