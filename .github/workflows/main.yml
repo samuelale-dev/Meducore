@@ -3,8 +3,12 @@ on: workflow_dispatch
 jobs:
   rename:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Rename API to api
         run: |
           cp -r educore/client/API educore/client/api
