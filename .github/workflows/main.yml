@@ -1,0 +1,16 @@
+name: Rename API folder
+on: workflow_dispatch
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename API to api
+        run: |
+          cp -r educore/client/API educore/client/api
+          git rm -rf educore/client/API
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add .
+          git commit -m "Rename API to api (lowercase)"
+          git push
