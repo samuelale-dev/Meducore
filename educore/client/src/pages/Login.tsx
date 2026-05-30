@@ -1,37 +1,35 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { signInWithEmail, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const handleGoogleLogin = async () => {
+    setError(''); setLoading(true);
     try {
-      await signInWithEmail(email, password);
-      navigate('/dashboard');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    setLoading(true);
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setLoading(true);
     try {
-      await signInWithGoogle();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -40,18 +38,18 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-slate-800 p-8 shadow-xl border border-slate-700">
         <div>
-          <h2 className="text-center text-3xl font-extrabold text-white">
-            EduCore Systems
-          </h2>
+          <h2 className="text-center text-3xl font-extrabold text-white">EduCore Systems</h2>
           <p className="mt-2 text-center text-sm text-slate-400">
             Sign in to access school administration hub
           </p>
         </div>
+
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
             {error}
           </div>
         )}
+
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -65,37 +63,36 @@ export default function Login() {
           </svg>
           {loading ? 'Connecting...' : 'Continue with Google'}
         </button>
+
         <div className="flex items-center gap-3">
-          <div className="flex-1 border-t border-slate-600"></div>
+          <div className="flex-1 border-t border-slate-600" />
           <span className="text-slate-400 text-sm">or</span>
-          <div className="flex-1 border-t border-slate-600"></div>
+          <div className="flex-1 border-t border-slate-600" />
         </div>
+
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
             <input
-              type="email"
-              required
+              type="email" required
               className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="admin@educore.edu"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
             <input
-              type="password"
-              required
+              type="password" required
               className="w-full rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
             />
           </div>
           <button
-            type="submit"
-            disabled={loading}
+            type="submit" disabled={loading}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-all disabled:opacity-50"
           >
             {loading ? 'Signing in...' : 'Sign In'}
@@ -104,4 +101,4 @@ export default function Login() {
       </div>
     </div>
   );
-}
+      }
