@@ -14,7 +14,6 @@ interface AppUser {
   id: string; email: string; fullName: string; role: UserRole; createdAt: string;
 }
 
-// High-end, sophisticated translucent badges for dark mode
 const ROLE_COLORS: Record<UserRole, string> = {
   ADMIN:             'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20',
   TEACHER:           'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20',
@@ -187,20 +186,19 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr class="border-b border-zinc-800 bg-[#1c1c21]/20 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    <th class="py-3 px-6">System Identity</th>
-                    <th class="py-3 px-6 text-right">Access Role Mapping</th>
+                  <tr className="border-b border-zinc-800 bg-[#1c1c21]/20 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    <th className="py-3 px-6">System Identity</th>
+                    <th className="py-3 px-6 text-right">Access Role Mapping</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-zinc-800/40 text-sm">
+                <tbody className="divide-y divide-zinc-800/40 text-sm">
                   {users.map(u => (
                     <tr key={u.id} className="hover:bg-[#1c1c21]/20 transition-colors group">
-                      <td class="py-3.5 px-6">
-                        <div class="flex items-center gap-3">
-                          {/* Generates a stylized visual dark gradient avatar placeholder */}
-                          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center border border-zinc-700 font-bold text-xs text-zinc-300 uppercase select-none">
+                      <td className="py-3.5 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center border border-zinc-700 font-bold text-xs text-zinc-300 uppercase select-none">
                             {u.fullName.slice(0, 2)}
                           </div>
                           <div>
@@ -209,7 +207,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </td>
-                      <td class="py-3.5 px-6 text-right vertical-middle">
+                      <td className="py-3.5 px-6 text-right">
                         <span className={`inline-block text-[11px] px-2.5 py-0.5 rounded-md font-semibold tracking-wide uppercase ${ROLE_COLORS[u.role]}`}>
                           {u.role.replace(/_/g, ' ')}
                         </span>
@@ -224,92 +222,5 @@ export default function AdminDashboard() {
       </div>
     </DashboardShell>
   );
-}
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {stats.map(s => (
-            <div key={s.label} className={`bg-white rounded-xl p-4 border-l-4 ${s.accent} shadow-sm`}>
-              <p className="text-xs text-slate-400 tracking-widest uppercase">{s.label}</p>
-              <p className={`font-bold text-indigo-950 mt-1 ${s.small ? 'text-base' : 'text-2xl'}`}>
-                {loading ? '—' : s.value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Users section */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-indigo-950 tracking-wide">Users</h2>
-            <button
-              onClick={() => setShowForm(o => !o)}
-              className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg active:scale-[0.98] transition-transform"
-            >
-              {showForm ? '✕ Cancel' : '+ Add User'}
-            </button>
-          </div>
-
-          {/* Add user form */}
-          {showForm && (
-            <form onSubmit={handleCreateUser} className="px-4 py-4 bg-slate-50 border-b border-slate-100 space-y-3">
-              {error && <p className="text-xs text-rose-500">{error}</p>}
-              <input
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Full name"
-                value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                required
-              />
-              <input
-                type="email"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Email address"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-              />
-              <select
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
-              >
-                {(['ADMIN','TEACHER','HOMEROOM_TEACHER','STUDENT','LIBRARY_ASSISTANT','MEAL_RECORDER'] as UserRole[]).map(r => (
-                  <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
-              >
-                {saving ? 'Creating…' : 'Create User'}
-              </button>
-            </form>
-          )}
-
-          {/* User list */}
-          {loading ? (
-            <div className="py-8 text-center text-slate-400 text-sm">Loading…</div>
-          ) : users.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 text-sm">No users yet</div>
-          ) : (
-            <ul className="divide-y divide-slate-50">
-              {users.map(u => (
-                <li key={u.id} className="flex items-center justify-between px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-indigo-950">{u.fullName}</p>
-                    <p className="text-xs text-slate-400">{u.email}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[u.role]}`}>
-                    {u.role.replace(/_/g, ' ')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </DashboardShell>
-  );
-}
+        }
+                  
