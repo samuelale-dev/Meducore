@@ -3,7 +3,8 @@
 // File: src/pages/dashboard/AdminDashboard.tsx
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DashboardShell from '../../components/DashboardShell';
 import { tenantApi, studentsApi } from '../../services/api';
@@ -13,11 +14,8 @@ type UserRole =
   | 'STUDENT' | 'LIBRARY_ASSISTANT' | 'MEAL_RECORDER';
 
 interface AppUser {
-  id: string;
-  email: string;
-  fullName: string;
-  role: UserRole;
-  createdAt: string;
+  id: string; email: string; fullName: string;
+  role: UserRole; createdAt: string;
 }
 
 const ALL_ROLES: UserRole[] = [
@@ -25,305 +23,441 @@ const ALL_ROLES: UserRole[] = [
   'STUDENT','LIBRARY_ASSISTANT','MEAL_RECORDER',
 ];
 
-// ─── Role badge colours ───────────────────────────────────────────────────
-const ROLE_STYLE: Record<UserRole, { bg: string; color: string; border: string }> = {
-  ADMIN:             { bg:'rgba(224,92,92,0.1)',   color:'#e05c5c', border:'rgba(224,92,92,0.25)' },
-  TEACHER:           { bg:'rgba(139,92,246,0.1)',  color:'#a78bfa', border:'rgba(139,92,246,0.25)' },
-  HOMEROOM_TEACHER:  { bg:'rgba(168,85,247,0.1)',  color:'#c084fc', border:'rgba(168,85,247,0.25)' },
-  STUDENT:           { bg:'rgba(78,201,148,0.1)',  color:'#4ec994', border:'rgba(78,201,148,0.25)' },
-  LIBRARY_ASSISTANT: { bg:'rgba(201,168,76,0.12)', color:'#c9a84c', border:'rgba(201,168,76,0.28)' },
-  MEAL_RECORDER:     { bg:'rgba(96,165,250,0.1)',  color:'#7ec8f5', border:'rgba(96,165,250,0.25)' },
+const ROLE_STYLE: Record<UserRole, { bg:string; color:string; border:string }> = {
+  ADMIN:             { bg:'rgba(224,92,92,0.12)',  color:'#e05c5c', border:'rgba(224,92,92,0.28)' },
+  TEACHER:           { bg:'rgba(139,92,246,0.12)', color:'#a78bfa', border:'rgba(139,92,246,0.28)' },
+  HOMEROOM_TEACHER:  { bg:'rgba(168,85,247,0.12)', color:'#c084fc', border:'rgba(168,85,247,0.28)' },
+  STUDENT:           { bg:'rgba(78,201,148,0.12)', color:'#4ec994', border:'rgba(78,201,148,0.28)' },
+  LIBRARY_ASSISTANT: { bg:'rgba(201,168,76,0.14)', color:'#c9a84c', border:'rgba(201,168,76,0.3)' },
+  MEAL_RECORDER:     { bg:'rgba(96,165,250,0.12)', color:'#7ec8f5', border:'rgba(96,165,250,0.28)' },
 };
 
-// ─── Shared style tokens ──────────────────────────────────────────────────
-const FONT_DISPLAY = "'Cormorant Garamond', Georgia, serif";
-const FONT_MONO    = "'Space Mono', 'Courier New', monospace";
+const FD = "'Cormorant Garamond', Georgia, serif";
+const FM = "'Space Mono', 'Courier New', monospace";
 
-const glass: React.CSSProperties = {
-  background:       'rgba(255,255,255,0.045)',
-  backdropFilter:   'blur(28px) saturate(1.6)',
-  WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
-  border:           '1px solid rgba(255,255,255,0.08)',
-  borderRadius:     18,
-};
-const glassHi: React.CSSProperties = {
-  ...glass,
-  border:     '1px solid rgba(201,168,76,0.35)',
-  boxShadow:  '0 0 0 1px rgba(201,168,76,0.06) inset, 0 24px 64px rgba(0,0,0,0.45), 0 0 60px rgba(201,168,76,0.05)',
-};
+// ── Quick action definition ──────────────────────────────────────────────
+interface QuickAction {
+  icon: string; label: string; sub: string;
+  color: string; glow: string; path: string;
+}
+const QUICK_ACTIONS: QuickAction[] = [
+  { icon:'▩', label:'QR Scanner',  sub:'Scan student / meal QR',  color:'#c9a84c', glow:'rgba(201,168,76,0.3)',  path:'/dashboard/admin/qr' },
+  { icon:'👥', label:'Add User',    sub:'Register new user',        color:'#a78bfa', glow:'rgba(139,92,246,0.3)',  path:'#add-user' },
+  { icon:'🎓', label:'Students',   sub:'Browse student records',   color:'#4ec994', glow:'rgba(78,201,148,0.3)', path:'/dashboard/admin/students' },
+  { icon:'📅', label:'Schedule',   sub:'Manage timetables',        color:'#7ec8f5', glow:'rgba(96,165,250,0.3)', path:'/dashboard/admin/schedule' },
+  { icon:'📊', label:'Reports',    sub:'Analytics & exports',      color:'#f59e0b', glow:'rgba(245,158,11,0.3)', path:'/dashboard/admin/reports' },
+  { icon:'⚙',  label:'Settings',   sub:'System configuration',     color:'#94a3b8', glow:'rgba(148,163,184,0.3)',path:'/dashboard/admin/settings' },
+];
 
-// ─── Inline CSS injected once ─────────────────────────────────────────────
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Space+Mono:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap');
 
-  .admin-root {
-    min-height: 100%;
-    background: transparent;
-    padding: 20px 0 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    max-width: 680px;
-    margin: 0 auto;
+  .adm { display:flex; flex-direction:column; gap:22px; }
+
+  /* ── Section label ── */
+  .adm-sec {
+    font-family: ${FM};
+    font-size: 8.5px; letter-spacing: 0.26em;
+    color: rgba(240,236,227,0.25); text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .adm-sec::after {
+    content: ''; flex:1; height:1px;
+    background: linear-gradient(90deg, rgba(201,168,76,0.15), transparent);
   }
 
-  /* Background mesh applied to body when this page is mounted */
-  .admin-bg-active {
-    background: #08080f !important;
-    background-image:
-      radial-gradient(ellipse 80% 60% at 15% 20%, rgba(201,168,76,0.07) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 80% at 85% 75%, rgba(100,80,200,0.08) 0%, transparent 60%),
-      linear-gradient(rgba(201,168,76,0.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(201,168,76,0.022) 1px, transparent 1px) !important;
-    background-size: auto, auto, 52px 52px, 52px 52px !important;
-  }
-
-  .stat-card {
-    padding: 16px 18px;
+  /* ── Stats grid ── */
+  .adm-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .adm-stat {
+    padding: 16px 16px 14px;
     border-radius: 16px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
+    background: rgba(255,255,255,0.042);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.07);
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
     cursor: default;
   }
-  .stat-card::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0;
+  .adm-stat:hover { border-color: rgba(201,168,76,0.18); transform: translateY(-1px); }
+  .adm-stat-accent {
+    position: absolute; left:0; top:0; bottom:0;
     width: 2px; border-radius: 2px 0 0 2px;
   }
-  .stat-label {
-    font-family: ${FONT_MONO};
-    font-size: 8.5px;
-    letter-spacing: 0.22em;
-    color: rgba(240,236,227,0.35);
-    text-transform: uppercase;
+  .adm-stat-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
     margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
   }
-  .stat-val {
-    font-family: ${FONT_DISPLAY};
-    font-size: 36px;
-    font-weight: 300;
-    color: #f0ece3;
-    line-height: 1;
+  .adm-stat-label {
+    font-family: ${FM};
+    font-size: 8px; letter-spacing: 0.2em;
+    color: rgba(240,236,227,0.3); text-transform: uppercase;
+  }
+  .adm-stat-icon { font-size: 15px; opacity: 0.4; }
+  .adm-stat-val {
+    font-family: ${FD};
+    font-size: 38px; font-weight: 300;
+    color: #f0ece3; line-height: 1;
     letter-spacing: -0.02em;
   }
-  .stat-tenant {
-    font-family: ${FONT_MONO};
-    font-size: 11px;
-    color: #c9a84c;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    line-height: 1.4;
-    word-break: break-all;
+  .adm-stat-tenant {
+    font-family: ${FM};
+    font-size: 10.5px; color: #c9a84c;
+    font-weight: 700; letter-spacing: 0.05em;
+    line-height: 1.4; word-break: break-all;
+  }
+  .adm-stat-sub {
+    font-family: ${FM};
+    font-size: 8.5px; color: rgba(240,236,227,0.2);
+    letter-spacing: 0.1em; margin-top: 4px;
   }
 
-  .panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
+  /* ── Quick actions ── */
+  .adm-qa { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .adm-qa-card {
+    padding: 14px 14px 13px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.07);
+    cursor: pointer; text-align: left;
+    transition: all 0.2s; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .adm-qa-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.14);
+  }
+  .adm-qa-card:active { transform: scale(0.97); }
+  .adm-qa-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at top left, var(--qa-glow), transparent 70%);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .adm-qa-card:hover::before { opacity: 1; }
+  .adm-qa-icon {
+    font-size: 20px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .adm-qa-label {
+    font-family: ${FD};
+    font-size: 14px; font-weight: 600;
+    color: #f0ece3; letter-spacing: 0.01em;
+    line-height: 1.1;
+  }
+  .adm-qa-sub {
+    font-family: ${FM};
+    font-size: 9px; color: rgba(240,236,227,0.3);
+    letter-spacing: 0.06em; line-height: 1.4;
+  }
+  .adm-qa-arrow {
+    position: absolute; right: 12px; top: 12px;
+    font-size: 11px; opacity: 0.2;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .adm-qa-card:hover .adm-qa-arrow { opacity: 0.7; transform: translate(2px,-2px); }
+
+  /* ── Users panel ── */
+  .adm-panel {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.042);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(201,168,76,0.22);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.05) inset, 0 20px 60px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .adm-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .panel-title {
-    font-family: ${FONT_DISPLAY};
-    font-size: 19px;
-    font-weight: 600;
-    color: #f0ece3;
-    letter-spacing: 0.01em;
+  .adm-panel-title {
+    font-family: ${FD};
+    font-size: 18px; font-weight: 600;
+    color: #f0ece3; letter-spacing: 0.01em;
+  }
+  .adm-panel-count {
+    font-family: ${FM};
+    font-size: 9px; color: rgba(240,236,227,0.25);
+    letter-spacing: 0.12em; margin-top: 1px;
   }
 
-  .btn-add {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 10px;
-    background: rgba(201,168,76,0.14);
-    border: 1px solid rgba(201,168,76,0.28);
-    color: #c9a84c;
-    font-family: ${FONT_MONO};
-    font-size: 9.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-add:hover {
-    background: rgba(201,168,76,0.22);
-    box-shadow: 0 0 18px rgba(201,168,76,0.18);
-  }
-
-  .form-section {
-    padding: 18px 20px;
+  /* ── Search bar ── */
+  .adm-search-wrap {
+    padding: 12px 18px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: rgba(255,255,255,0.02);
+    position: relative;
   }
-  .glass-input {
+  .adm-search-icon {
+    position: absolute; left: 30px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px; color: rgba(240,236,227,0.2);
+    pointer-events: none;
+  }
+  .adm-search {
     width: 100%;
     background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
     color: #f0ece3;
-    font-family: ${FONT_MONO};
-    font-size: 12px;
-    letter-spacing: 0.03em;
-    padding: 12px 14px;
+    font-family: ${FM};
+    font-size: 11.5px; letter-spacing: 0.04em;
+    padding: 9px 14px 9px 34px;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     box-sizing: border-box;
   }
-  .glass-input::placeholder { color: rgba(240,236,227,0.2); }
-  .glass-input:focus {
+  .adm-search::placeholder { color: rgba(240,236,227,0.18); }
+  .adm-search:focus {
+    border-color: rgba(201,168,76,0.4);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.06);
+  }
+
+  /* ── Add user button ── */
+  .adm-btn-add {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 15px;
+    border-radius: 10px;
+    background: rgba(201,168,76,0.13);
+    border: 1px solid rgba(201,168,76,0.28);
+    color: #c9a84c;
+    font-family: ${FM};
+    font-size: 9px; letter-spacing: 0.14em;
+    text-transform: uppercase; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .adm-btn-add:hover {
+    background: rgba(201,168,76,0.22);
+    box-shadow: 0 0 16px rgba(201,168,76,0.18);
+  }
+
+  /* ── Add user form ── */
+  .adm-form {
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(201,168,76,0.03);
+    display: flex; flex-direction: column; gap: 11px;
+    animation: adm-drop 0.22s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes adm-drop {
+    from { opacity:0; transform: translateY(-8px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .adm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .adm-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 11px;
+    color: #f0ece3;
+    font-family: ${FM};
+    font-size: 11.5px; letter-spacing: 0.03em;
+    padding: 11px 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+  }
+  .adm-input::placeholder { color: rgba(240,236,227,0.2); }
+  .adm-input:focus {
     border-color: rgba(201,168,76,0.45);
     box-shadow: 0 0 0 3px rgba(201,168,76,0.07);
   }
-  .glass-input option { background: #12121e; }
-
-  .btn-primary {
-    width: 100%;
-    padding: 13px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(201,168,76,0.9), rgba(180,140,50,0.9));
-    color: #0a0810;
-    font-family: ${FONT_MONO};
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    border: none;
-    cursor: pointer;
+  .adm-input option { background: #0e0e1a; }
+  .adm-btn-submit {
+    width: 100%; padding: 12px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(201,168,76,0.9), rgba(175,135,45,0.9));
+    color: #080810;
+    font-family: ${FM};
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    border: none; cursor: pointer;
     transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-    box-shadow: 0 0 28px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.22);
+    box-shadow: 0 0 24px rgba(201,168,76,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn-primary:hover:not(:disabled) {
+  .adm-btn-submit:hover:not(:disabled) {
     opacity: 0.88;
-    box-shadow: 0 0 44px rgba(201,168,76,0.38), inset 0 1px 0 rgba(255,255,255,0.22);
+    box-shadow: 0 0 36px rgba(201,168,76,0.36), inset 0 1px 0 rgba(255,255,255,0.2);
   }
-  .btn-primary:active:not(:disabled) { transform: scale(0.985); }
-  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-
-  .err-text {
-    font-family: ${FONT_MONO};
-    font-size: 10.5px;
-    color: #e05c5c;
-    letter-spacing: 0.05em;
+  .adm-btn-submit:active:not(:disabled) { transform: scale(0.985); }
+  .adm-btn-submit:disabled { opacity: 0.32; cursor: not-allowed; }
+  .adm-err {
+    font-family: ${FM};
+    font-size: 10px; color: #e05c5c; letter-spacing: 0.06em;
   }
 
-  .user-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
+  /* ── User row ── */
+  .adm-user-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 13px 18px;
     border-bottom: 1px solid rgba(255,255,255,0.03);
     transition: background 0.15s;
   }
-  .user-row:last-child { border-bottom: none; }
-  .user-row:hover { background: rgba(255,255,255,0.02); }
-
-  .user-ava {
-    width: 36px; height: 36px;
-    border-radius: 10px;
+  .adm-user-row:last-child { border-bottom: none; }
+  .adm-user-row:hover { background: rgba(255,255,255,0.02); }
+  .adm-user-ava {
+    width: 34px; height: 34px; border-radius: 10px;
     background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.04));
     border: 1px solid rgba(201,168,76,0.14);
     display: flex; align-items: center; justify-content: center;
-    font-family: ${FONT_DISPLAY};
-    font-size: 13px; font-weight: 600; color: #c9a84c;
+    font-family: ${FD};
+    font-size: 12px; font-weight: 600; color: #c9a84c;
     flex-shrink: 0;
   }
-  .user-name {
-    font-family: ${FONT_DISPLAY};
-    font-size: 14px; font-weight: 600;
+  .adm-user-name {
+    font-family: ${FD};
+    font-size: 13.5px; font-weight: 600;
     color: #f0ece3; letter-spacing: 0.01em;
   }
-  .user-email {
-    font-family: ${FONT_MONO};
-    font-size: 10px; color: rgba(240,236,227,0.28);
+  .adm-user-email {
+    font-family: ${FM};
+    font-size: 9.5px; color: rgba(240,236,227,0.25);
     letter-spacing: 0.04em; margin-top: 1px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-
-  .role-badge {
+  .adm-user-date {
+    font-family: ${FM};
+    font-size: 8px; color: rgba(240,236,227,0.15);
+    letter-spacing: 0.08em; margin-top: 2px;
+  }
+  .adm-role-badge {
     display: inline-flex; align-items: center;
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-family: ${FONT_MONO};
-    font-size: 8.5px; font-weight: 700;
+    padding: 4px 9px; border-radius: 99px;
+    font-family: ${FM};
+    font-size: 8px; font-weight: 700;
     letter-spacing: 0.12em; text-transform: uppercase;
-    border: 1px solid;
-    white-space: nowrap;
+    border: 1px solid; white-space: nowrap; flex-shrink: 0;
   }
 
-  .empty-state {
-    padding: 36px 20px;
-    text-align: center;
-    font-family: ${FONT_MONO};
-    font-size: 11px;
-    color: rgba(240,236,227,0.2);
-    letter-spacing: 0.1em;
+  /* ── Empty / loading ── */
+  .adm-empty {
+    padding: 40px 18px; text-align: center;
+    font-family: ${FM};
+    font-size: 10.5px; color: rgba(240,236,227,0.18);
+    letter-spacing: 0.12em;
   }
-
-  .panel-foot {
-    padding: 10px 20px;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    font-family: ${FONT_MONO};
-    font-size: 9px; letter-spacing: 0.14em;
-    color: rgba(240,236,227,0.18); text-transform: uppercase;
+  .adm-loading {
+    padding: 40px; display:flex;
+    align-items:center; justify-content:center;
   }
-
-  .spin-sm {
-    display: inline-block;
-    width: 12px; height: 12px;
-    border: 2px solid rgba(10,8,16,0.3);
-    border-top-color: rgba(10,8,16,0.85);
-    border-radius: 50%;
-    animation: admin-spin 0.7s linear infinite;
-  }
-  @keyframes admin-spin { to { transform: rotate(360deg); } }
-
-  .loading-pulse {
-    padding: 36px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .loading-pulse-ring {
-    width: 28px; height: 28px;
-    border: 2px solid rgba(201,168,76,0.2);
+  .adm-ring {
+    width: 26px; height: 26px;
+    border: 2px solid rgba(201,168,76,0.18);
     border-top-color: rgba(201,168,76,0.7);
     border-radius: 50%;
-    animation: admin-spin 0.8s linear infinite;
+    animation: adm-spin 0.8s linear infinite;
+  }
+  @keyframes adm-spin { to { transform:rotate(360deg); } }
+  .adm-spin-sm {
+    display: inline-block; width: 11px; height: 11px;
+    border: 2px solid rgba(8,8,16,0.3);
+    border-top-color: rgba(8,8,16,0.8);
+    border-radius: 50%;
+    animation: adm-spin 0.7s linear infinite;
+  }
+
+  /* ── Panel footer ── */
+  .adm-foot {
+    padding: 10px 18px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    font-family: ${FM};
+    font-size: 8.5px; letter-spacing: 0.16em;
+    color: rgba(240,236,227,0.16); text-transform: uppercase;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* ── Toast ── */
+  .adm-toast {
+    position: fixed; top: 72px; right: 16px; z-index: 100;
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 16px;
+    border-radius: 13px;
+    background: rgba(10,10,20,0.97);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+    font-family: ${FM};
+    font-size: 11px; color: #f0ece3; letter-spacing: 0.04em;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    min-width: 220px;
+    animation: adm-toast-in 0.3s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes adm-toast-in {
+    from { opacity:0; transform: translateX(16px) scale(0.95); }
+    to   { opacity:1; transform: translateX(0)    scale(1); }
+  }
+  .adm-toast-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .adm-toast.ok  .adm-toast-dot { background:#4ec994; box-shadow:0 0 8px #4ec994; }
+  .adm-toast.err .adm-toast-dot { background:#e05c5c; box-shadow:0 0 8px #e05c5c; }
+  .adm-toast.ok  { border-color:rgba(78,201,148,0.2); }
+  .adm-toast.err { border-color:rgba(224,92,92,0.2); }
+
+  /* ── Activity feed ── */
+  .adm-feed { display:flex; flex-direction:column; gap:0; }
+  .adm-feed-row {
+    display:flex; align-items:flex-start; gap:12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .adm-feed-row:last-child { border-bottom:none; }
+  .adm-feed-dot {
+    width:8px; height:8px; border-radius:50%;
+    margin-top:3px; flex-shrink:0;
+  }
+  .adm-feed-msg {
+    font-family: ${FM};
+    font-size: 10.5px; color: rgba(240,236,227,0.6);
+    letter-spacing: 0.03em; line-height:1.5;
+  }
+  .adm-feed-time {
+    font-size: 9px; color: rgba(240,236,227,0.2);
+    letter-spacing: 0.08em; margin-top:2px;
   }
 `;
 
-// ─── Component ────────────────────────────────────────────────────────────
+// ─── Toast ────────────────────────────────────────────────────────────────
+function Toast({ msg, type, onDone }: { msg:string; type:'ok'|'err'; onDone:()=>void }) {
+  useEffect(() => { const t = setTimeout(onDone, 2800); return ()=>clearTimeout(t); }, []);
+  return (
+    <div className={`adm-toast ${type}`}>
+      <span className="adm-toast-dot" />
+      {msg}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { session, appUser } = useAuth();
+  const navigate = useNavigate();
   const token = session?.access_token ?? '';
 
-  const [users, setUsers]             = useState<AppUser[]>([]);
+  const [users, setUsers]               = useState<AppUser[]>([]);
   const [studentCount, setStudentCount] = useState(0);
-  const [loading, setLoading]         = useState(true);
-  const [showForm, setShowForm]       = useState(false);
-  const [form, setForm]               = useState({ email: '', fullName: '', role: 'TEACHER' as UserRole });
-  const [saving, setSaving]           = useState(false);
-  const [error, setError]             = useState('');
+  const [loading, setLoading]           = useState(true);
+  const [showForm, setShowForm]         = useState(false);
+  const [search, setSearch]             = useState('');
+  const [form, setForm]                 = useState({ email:'', fullName:'', role:'TEACHER' as UserRole });
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState('');
+  const [toast, setToast]               = useState<{msg:string;type:'ok'|'err'}|null>(null);
+  const nextId = useRef(1000);
 
-  // Inject styles once
+  // Inject styles
   useEffect(() => {
     const el = document.createElement('style');
-    el.id = 'admin-dashboard-styles';
+    el.id = 'adm-styles';
     el.textContent = STYLES;
-    if (!document.getElementById('admin-dashboard-styles')) {
-      document.head.appendChild(el);
-    }
-    return () => { document.getElementById('admin-dashboard-styles')?.remove(); };
+    if (!document.getElementById('adm-styles')) document.head.appendChild(el);
+    return () => { document.getElementById('adm-styles')?.remove(); };
   }, []);
 
+  // Fetch data
   useEffect(() => {
     Promise.all([
       tenantApi.listUsers(token),
@@ -331,7 +465,7 @@ export default function AdminDashboard() {
     ]).then(([u, s]: any) => {
       setUsers(u);
       setStudentCount(Array.isArray(s) ? s.length : 0);
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [token]);
 
   async function handleCreateUser(e: React.FormEvent) {
@@ -341,7 +475,8 @@ export default function AdminDashboard() {
       const newUser: any = await tenantApi.createUser(token, form);
       setUsers(u => [newUser, ...u]);
       setShowForm(false);
-      setForm({ email: '', fullName: '', role: 'TEACHER' });
+      setForm({ email:'', fullName:'', role:'TEACHER' });
+      setToast({ msg: `${form.fullName} added successfully.`, type:'ok' });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -349,128 +484,68 @@ export default function AdminDashboard() {
     }
   }
 
-  const stats = [
-    { label: 'Total Users', value: users.length,                                  accent: '#c9a84c', icon: '👥' },
-    { label: 'Students',    value: studentCount,                                   accent: '#4ec994', icon: '🎓' },
-    { label: 'Staff',       value: users.filter(u => u.role !== 'STUDENT').length, accent: '#7ec8f5', icon: '👔' },
-    { label: 'Tenant',      value: null, tenant: appUser?.tenant?.subdomain ?? '—', accent: '#f59e0b', icon: '🏫' },
-  ];
+  const handleQA = (path: string) => {
+    if (path === '#add-user') { setShowForm(true); return; }
+    navigate(path);
+  };
 
   const initials = (name: string) =>
-    name.split(' ').map(n => n[0]?.toUpperCase() ?? '').join('').slice(0, 2) || '??';
+    name.split(' ').map(n => n[0]?.toUpperCase() ?? '').join('').slice(0,2) || '??';
+
+  const filtered = users.filter(u =>
+    u.fullName.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const stats = [
+    { label:'Total Users', value: users.length,                                   accent:'#c9a84c', icon:'👥', sub:'All registered accounts' },
+    { label:'Students',    value: studentCount,                                    accent:'#4ec994', icon:'🎓', sub:'Enrolled this term' },
+    { label:'Staff',       value: users.filter(u=>u.role!=='STUDENT').length,      accent:'#7ec8f5', icon:'👔', sub:'Active staff members' },
+    { label:'Tenant',      value: null, tenant: appUser?.tenant?.subdomain ?? '—', accent:'#f59e0b', icon:'🏫', sub:'System identifier' },
+  ];
+
+  // Mock activity feed
+  const feed = [
+    { msg:'Samuel Alemu logged in',                  time:'Just now',   color:'#4ec994' },
+    { msg:'New student record created',              time:'2 min ago',  color:'#c9a84c' },
+    { msg:'Meal log submitted by Meal Recorder',     time:'18 min ago', color:'#7ec8f5' },
+    { msg:'System backup completed',                 time:'1 hr ago',   color:'#a78bfa' },
+    { msg:'Schedule updated for Grade 11',           time:'3 hrs ago',  color:'#f59e0b' },
+  ];
 
   return (
     <DashboardShell title="Admin Panel">
-      <div className="admin-root">
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
-        {/* ── Stats grid ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-          {stats.map(s => (
-            <div key={s.label} className="stat-card" style={{ ...glass }}>
-              <style>{`.stat-card[data-key="${s.label}"]::before { background: ${s.accent}; }`}</style>
-              {/* left accent via inline pseudo workaround */}
-              <div style={{
-                position:'absolute', left:0, top:0, bottom:0, width:2,
-                background: s.accent, borderRadius:'2px 0 0 2px'
-              }} />
-              <div className="stat-label">
-                {s.label}
-                <span style={{ fontSize:13, opacity:0.45 }}>{s.icon}</span>
+      <div className="adm">
+
+        {/* ── Stats ── */}
+        <div>
+          <div className="adm-sec">Overview</div>
+          <div className="adm-stats">
+            {stats.map(s => (
+              <div key={s.label} className="adm-stat">
+                <div className="adm-stat-accent" style={{ background: s.accent }} />
+                <div className="adm-stat-top">
+                  <div className="adm-stat-label">{s.label}</div>
+                  <div className="adm-stat-icon">{s.icon}</div>
+                </div>
+                {s.tenant !== undefined
+                  ? <div className="adm-stat-tenant">{loading ? '—' : s.tenant}</div>
+                  : <div className="adm-stat-val">{loading ? '—' : s.value}</div>
+                }
+                <div className="adm-stat-sub">{s.sub}</div>
               </div>
-              {s.tenant !== undefined
-                ? <div className="stat-tenant">{loading ? '—' : s.tenant}</div>
-                : <div className="stat-val">{loading ? '—' : s.value}</div>
-              }
-            </div>
-          ))}
-        </div>
-
-        {/* ── Users panel ── */}
-        <div style={{ ...glassHi, overflow:'hidden' }}>
-
-          <div className="panel-head">
-            <h2 className="panel-title">Users</h2>
-            <button
-              className="btn-add"
-              onClick={() => { setShowForm(o => !o); setError(''); }}
-            >
-              {showForm ? '✕ Cancel' : '+ Add User'}
-            </button>
-          </div>
-
-          {/* Add user form */}
-          {showForm && (
-            <form onSubmit={handleCreateUser} className="form-section">
-              {error && <p className="err-text">⚠ {error}</p>}
-
-              <input
-                className="glass-input"
-                placeholder="Full name"
-                value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                required
-              />
-              <input
-                type="email"
-                className="glass-input"
-                placeholder="Email address"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-              />
-              <select
-                className="glass-input"
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}
-              >
-                {ALL_ROLES.map(r => (
-                  <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-
-              <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? <span className="spin-sm" /> : null}
-                {saving ? 'Creating…' : 'Create User →'}
-              </button>
-            </form>
-          )}
-
-          {/* User list */}
-          {loading ? (
-            <div className="loading-pulse">
-              <div className="loading-pulse-ring" />
-            </div>
-          ) : users.length === 0 ? (
-            <div className="empty-state">No users yet</div>
-          ) : (
-            <ul style={{ listStyle:'none', margin:0, padding:0 }}>
-              {users.map(u => {
-                const rs = ROLE_STYLE[u.role];
-                return (
-                  <li key={u.id} className="user-row">
-                    <div className="user-ava">{initials(u.fullName)}</div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div className="user-name">{u.fullName}</div>
-                      <div className="user-email">{u.email}</div>
-                    </div>
-                    <span
-                      className="role-badge"
-                      style={{ background: rs.bg, color: rs.color, borderColor: rs.border }}
-                    >
-                      {u.role.replace(/_/g, ' ')}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          <div className="panel-foot">
-            {users.length} user{users.length !== 1 ? 's' : ''} total
+            ))}
           </div>
         </div>
 
-      </div>
-    </DashboardShell>
-  );
-                      }    
+        {/* ── Quick actions ── */}
+        <div>
+          <div className="adm-sec">Quick Actions</div>
+          <div className="adm-qa">
+            {QUICK_ACTIONS.map(qa => (
+              <button
+                key={qa.label}
+                className="adm-qa-card"
+ 
