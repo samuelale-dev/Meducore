@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       where: { id: userRecord.id },
       data: {
         authId: supabaseUser.id,
-        email: verifiedEmail, // update to verified email
+        email: verifiedEmail.toLowerCase().trim(), // update to verified email
       },
       select: { id: true, email: true, fullName: true, role: true, tenantId: true },
     });
@@ -123,49 +123,4 @@ export default async function handler(req, res) {
     console.error('[onboarding/verify] Error:', err);
     return res.status(500).json({ error: 'Verification failed. Please try again.' });
   }
-}
-    if (!userRecord) {
-      return res.status(404).json({
-        error: `Student ID ${studentId} found but no user account exists yet. Ask an admin to provision you.`,
-      });
-    }
-
-  } else {
-    // WORKAROUND: Remove 'role' from the where clause to prevent Postgres Enum crash
-    const potentialUser = await prisma.user.findFirst({
-      where: {
-        email: verificationId.toLowerCase().trim(),
-        authId: null,
-      },
-    });
-
-    // Validate the role in-memory instead
-    if (potentialUser && potentialUser.role === role) {
-      userRecord = potentialUser;
-    }
-
-    if (!userRecord) {
-      return res.status(404).json({
-        error: `No ${role.replace(/_/g, ' ').toLowerCase()} account found for "${verificationId}". Contact your administrator.`,
-      });
-    }
-  }
-
-  if (userRecord.email && userRecord.email.toLowerCase() !== verifiedEmail.toLowerCase()) {
-    console.warn(`[Onboarding] Email mismatch for User ID ${userRecord.id}: Provisioned with ${userRecord.email}, but linked using ${verifiedEmail}`);
-  }
-
-  const linked = await prisma.user.update({
-    where: { id: userRecord.id },
-    data: { 
-      authId: supabaseUser.id, 
-      email: verifiedEmail.toLowerCase().trim() 
-    },
-    select: { id: true, email: true, fullName: true, role: true, tenantId: true },
-  });
-
-  return res.json({
-    message: 'Account verified and linked successfully',
-    user: linked,
-  });
-}
+      }
