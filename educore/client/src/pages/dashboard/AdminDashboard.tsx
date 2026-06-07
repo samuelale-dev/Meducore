@@ -544,8 +544,122 @@ export default function AdminDashboard() {
         <div>
           <div className="adm-sec">Quick Actions</div>
           <div className="adm-qa">
+          
             {QUICK_ACTIONS.map(qa => (
               <button
                 key={qa.label}
                 className="adm-qa-card"
- 
+style={{ '--qa-glow': qa.glow } as React.CSSProperties}
+                onClick={() => handleQA(qa.path)}
+              >
+                <span className="adm-qa-arrow">↗</span>
+                <div className="adm-qa-icon" style={{ color: qa.color }}>{qa.icon}</div>
+                <div className="adm-qa-label">{qa.label}</div>
+                <div className="adm-qa-sub">{qa.sub}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Users panel ── */}
+        <div>
+          <div className="adm-sec">User Management</div>
+          <div className="adm-panel">
+            <div className="adm-panel-head">
+              <div>
+                <div className="adm-panel-title">Users</div>
+                <div className="adm-panel-count">{users.length} total · {users.filter(u=>u.role==='STUDENT').length} students · {users.filter(u=>u.role!=='STUDENT').length} staff</div>
+              </div>
+              <button className="adm-btn-add" onClick={() => { setShowForm(o=>!o); setError(''); }}>
+                {showForm ? '✕ Cancel' : '+ Add User'}
+              </button>
+            </div>
+
+            {/* Add user form */}
+            {showForm && (
+              <form onSubmit={handleCreateUser} className="adm-form">
+                {error && <p className="adm-err">⚠ {error}</p>}
+                <input className="adm-input" placeholder="Full name"
+                  value={form.fullName} onChange={e => setForm(f=>({...f,fullName:e.target.value}))} required />
+                <input type="email" className="adm-input" placeholder="Email address"
+                  value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} required />
+                <div className="adm-form-grid">
+                  <select className="adm-input" value={form.role}
+                    onChange={e => setForm(f=>({...f,role:e.target.value as UserRole}))}>
+                    {ALL_ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g,' ')}</option>)}
+                  </select>
+                  <button type="submit" className="adm-btn-submit" disabled={saving}>
+                    {saving && <span className="adm-spin-sm" />}
+                    {saving ? 'Creating…' : 'Create →'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Search */}
+            <div className="adm-search-wrap">
+              <span className="adm-search-icon">🔍</span>
+              <input className="adm-search" placeholder="Search by name or email…"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+
+            {/* List */}
+            {loading ? (
+              <div className="adm-loading"><div className="adm-ring" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="adm-empty">
+                {search ? 'No users match your search.' : 'No users yet.'}
+              </div>
+            ) : (
+              <ul style={{ listStyle:'none', margin:0, padding:0 }}>
+                {filtered.map(u => {
+                  const rs = ROLE_STYLE[u.role];
+                  return (
+                    <li key={u.id} className="adm-user-row">
+                      <div className="adm-user-ava">{initials(u.fullName)}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div className="adm-user-name">{u.fullName}</div>
+                        <div className="adm-user-email">{u.email}</div>
+                        <div className="adm-user-date">
+                          {u.createdAt ? `Joined ${new Date(u.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}` : ''}
+                        </div>
+                      </div>
+                      <span className="adm-role-badge"
+                        style={{ background:rs.bg, color:rs.color, borderColor:rs.border }}>
+                        {u.role.replace(/_/g,' ')}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <div className="adm-foot">
+              <span>{filtered.length} of {users.length} users</span>
+              <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Recent activity ── */}
+        <div>
+          <div className="adm-sec">Recent Activity</div>
+          <div className="adm-panel">
+            <div className="adm-feed">
+              {feed.map((f, i) => (
+                <div key={i} className="adm-feed-row">
+                  <div className="adm-feed-dot" style={{ background: f.color, boxShadow:`0 0 6px ${f.color}` }} />
+                  <div>
+                    <div className="adm-feed-msg">{f.msg}</div>
+                    <div className="adm-feed-time">{f.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </DashboardShell>
+  );
+                }
